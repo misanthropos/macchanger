@@ -58,6 +58,7 @@ print_help (void)
 		"  -r,  --random                 Set fully random MAC\n"
 		"  -l,  --list[=keyword]         Print known vendors\n"
 		"  -b,  --bia                    Pretend to be a burned-in-address\n"
+		"  -j,  --justprint              Just print a generated MAC\n"
 		"  -m,  --mac=XX:XX:XX:XX:XX:XX  Set the MAC XX:XX:XX:XX:XX:XX\n\n"
 		"Report bugs to https://github.com/alobbs/macchanger/issues\n");
 }
@@ -120,6 +121,7 @@ main (int argc, char *argv[])
 	char print_list   = 0;
 	char show         = 0;
 	char set_bia      = 0;
+        char just_print   = 0;
 	char *set_mac     = NULL;
 	char *search_word = NULL;
 
@@ -135,6 +137,7 @@ main (int argc, char *argv[])
 		{"show",        no_argument,       NULL, 's'},
 		{"another_any", no_argument,       NULL, 'A'},
 		{"bia",         no_argument,       NULL, 'b'},
+		{"justprint",   no_argument,       NULL, 'j'},
 		{"list",        optional_argument, NULL, 'l'},
 		{"mac",         required_argument, NULL, 'm'},
 		{NULL, 0, NULL, 0}
@@ -149,7 +152,7 @@ main (int argc, char *argv[])
 	int         ret;
 
 	/* Read the parameters */
-	while ((val = getopt_long (argc, argv, "VasAbrephlm:", long_options, NULL)) != -1) {
+	while ((val = getopt_long (argc, argv, "VasAbrephjlm:", long_options, NULL)) != -1) {
 		switch (val) {
 		case 'V':
 			printf ("GNU MAC changer %s\n"
@@ -187,6 +190,9 @@ main (int argc, char *argv[])
 			break;
 		case 'm':
 			set_mac = optarg;
+			break;
+		case 'j':
+			just_print = 1;
 			break;
 		case 'h':
 		case '?':
@@ -230,14 +236,16 @@ main (int argc, char *argv[])
 		fprintf (stderr, "[WARNING] Ignoring --bia option that can only be used with --random\n");
 	}
 
-	/* Print the current MAC info */
-	print_mac ("Current MAC:   ", mac);
-	print_mac ("Permanent MAC: ", mac_permanent);
+	if (!just_print && show) {
+		/* Print the current MAC info */
+		print_mac ("Current MAC:   ", mac);
+		print_mac ("Permanent MAC: ", mac_permanent);
+	}
 
 	/* Change the MAC */
 	mac_faked = mc_mac_dup (mac);
 
-	if (show) {
+	if (!just_print && show ) {
 		exit (EXIT_OK);
 	} else if (set_mac) {
 		if (mc_mac_read_string (mac_faked, set_mac) < 0) {
@@ -256,8 +264,16 @@ main (int argc, char *argv[])
 		mc_mac_random (mac_faked, 3, 1);
 	} else if (permanent) {
 		mac_faked = mc_mac_dup (mac_permanent);
-	} else {
-		exit (EXIT_OK); /* default to show */
+	}
+
+	if (just_print) {
+		if (show) {
+			print_mac ("", mac);
+		}
+		else {
+			print_mac ("", mac_faked);
+		}
+		exit (EXIT_OK);
 	}
 
 	/* Set the new MAC */
